@@ -2,7 +2,7 @@ import sade from "sade"
 import rl from "readline"
 import { AxiosError } from "axios"
 
-import { NotionExporter } from "./NotionExporter"
+import { fileTokenName, NotionExporter, tokenV2Name } from "./NotionExporter"
 import { Config } from "./config"
 
 import pkg from "../package.json"
@@ -36,8 +36,8 @@ const action = async (blockId: string, fileType: string, config?: Config) => {
     process.exit(1)
   }
 
-  const tokenV2 = await envOrAskToken("NOTION_TOKEN")
-  const fileToken = await envOrAskToken("NOTION_FILE_TOKEN")
+  const tokenV2 = await envOrAskToken(tokenV2Name)
+  const fileToken = await envOrAskToken(fileTokenName)
   const exporter = new NotionExporter(tokenV2, fileToken, config)
 
   const outputStr =
@@ -61,13 +61,13 @@ export const cli = (args: string[]) => {
   sade("notion-exporter <blockId/URL>", true)
     .version(pkg.version)
     .describe(
-      `Export a block, page or DB from Notion.so as Markdown or CSV. 
-    The block/page is specified by its UUID or its URL, see examples below.
+      `Export a block, page or DB from Notion as Markdown or CSV. 
+    The block/page is specified by its UUID or its URL.
 
-    To download any page, one has to provide the value of the Cookie 'token_v2'
-    of a logged-in user on the official Notion.so website as 'NOTION_TOKEN'
-    environment variable or via the prompt of the command.
-    The user needs to have at least read access to the block/page to download.
+    To download any page, the values of the cookies 'token_v2' and 'file_token'
+    of a logged-in user in Notion need to be provided as '${tokenV2Name}' and 
+    '${fileTokenName}' environment variable or via prompt. The user needs to 
+    have at least read access to the block/page to download.
 
     © ${pkg.author}, 2025.`,
     )

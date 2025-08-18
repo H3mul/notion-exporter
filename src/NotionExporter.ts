@@ -10,6 +10,17 @@ interface Task {
   status: { exportURL?: string }
 }
 
+export const tokenV2Name = "NOTION_TOKEN"
+export const fileTokenName = "NOTION_FILE_TOKEN"
+
+const argOrEnv = (envName: string, arg?: string): string => {
+  const token = arg?.trim() || process.env[envName]?.trim()
+  if (!token) {
+    throw new Error(`Missing ${envName}`)
+  }
+  return token
+}
+
 /** Lightweight client to export ZIP, Markdown or CSV files from a Notion block/page. */
 export class NotionExporter {
   protected readonly client: AxiosInstance
@@ -17,17 +28,25 @@ export class NotionExporter {
 
   /**
    * Create a new NotionExporter client. To export any blocks/pages from
-   * Notion.so one needs to provide the token of a user who has read access to
+   * Notion one needs to provide the tokens of a user who has read access to
    * the corresponding pages.
    *
+   * @note alternatively the tokens can be read from the `env`
+   *
    * @param tokenV2 – the Notion `token_v2` Cookie value
+   *                  (or from env as `NOTION_TOKEN`)
    * @param fileToken – the Notion `file_token` Cookie value
+   *                  (or from env as `NOTION_FILE_TOKEN`)
+   * @param config - additional configuration options
    */
-  constructor(tokenV2: string, fileToken: string, config?: Config) {
+  constructor(tokenV2?: string, fileToken?: string, config?: Config) {
+    const token = argOrEnv(tokenV2Name, tokenV2)
+    const fileTok = argOrEnv(fileTokenName, fileToken)
+
     this.client = axios.create({
       baseURL: "https://www.notion.so/api/v3/",
       headers: {
-        Cookie: `token_v2=${tokenV2};file_token=${fileToken}`,
+        Cookie: `token_v2=${token};file_token=${fileTok}`,
       },
     })
     this.config = Object.assign(defaultConfig, config)
