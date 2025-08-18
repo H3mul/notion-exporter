@@ -1,13 +1,17 @@
+import sade from "sade"
 import rl from "readline"
 import { AxiosError } from "axios"
 
 import { NotionExporter } from "./NotionExporter"
 import { Config } from "./config"
 
+import pkg from "../package.json"
+
 export const FileType = ["md", "csv"] as const
 type FileType = (typeof FileType)[number]
 
-const isFileType = (s: string): s is FileType => FileType.includes(s as any)
+const isFileType = (s: string): s is FileType =>
+  (FileType as readonly string[]).includes(s)
 
 const askToken = (tokenName: string): Promise<string> => {
   const prompt = rl.createInterface({
@@ -18,7 +22,7 @@ const askToken = (tokenName: string): Promise<string> => {
     prompt.question(`Paste your ${tokenName}:\n`, (token) => {
       resolve(token)
       prompt.close()
-    })
+    }),
   )
   return promise
 }
@@ -53,4 +57,32 @@ const action = async (blockId: string, fileType: string, config?: Config) => {
   })
 }
 
-export default action
+export const cli = (args: string[]) => {
+  sade("notion-exporter <blockId/URL>", true)
+    .version(pkg.version)
+    .describe(
+      `Export a block, page or DB from Notion.so as Markdown or CSV. 
+    The block/page is specified by its UUID or its URL, see examples below.
+
+    To download any page, one has to provide the value of the Cookie 'token_v2'
+    of a logged-in user on the official Notion.so website as 'NOTION_TOKEN'
+    environment variable or via the prompt of the command.
+    The user needs to have at least read access to the block/page to download.
+
+    © ${pkg.author}, 2025.`,
+    )
+
+    .option("-t, --type", `File type to be exported: ${FileType}`, "md")
+    .option("-r, --recursive", "Export children subpages", false)
+    .example(
+      "https://www.notion.so/Notion-Official-83715d7703ee4b8699b5e659a4712dd8",
+    )
+    .example("83715d7703ee4b8699b5e659a4712dd8 -t md")
+    .example("3af0a1e347dd40c5ba0a2c91e234b2a5 -t csv > list.csv")
+    .action((blockId, opts) =>
+      action(blockId, opts.type, {
+        recursive: opts.recursive,
+      }),
+    )
+    .parse(args)
+}
