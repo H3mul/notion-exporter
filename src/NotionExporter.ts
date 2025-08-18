@@ -44,6 +44,7 @@ export class NotionExporter {
     if (!id) return Promise.reject(`Invalid URL or blockId: ${idOrUrl}`)
 
     // extract pollInterval to not put it in request
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { recursive, pollInterval, ...config } = this.config
     const res = await this.client.post("enqueueTask", {
       task: {
@@ -128,7 +129,7 @@ export class NotionExporter {
    */
   async getFileString(
     idOrUrl: string,
-    predicate: (entry: AdmZip.IZipEntry) => boolean
+    predicate: (entry: AdmZip.IZipEntry) => boolean,
   ): Promise<string> {
     const zip = await this.getZip(idOrUrl)
     const entry = zip.getEntries().find(predicate)
@@ -146,10 +147,10 @@ export class NotionExporter {
    */
   getCsvString = (
     idOrUrl: string,
-    onlyCurrentView?: boolean
+    onlyCurrentView?: boolean,
   ): Promise<string> =>
     this.getFileString(idOrUrl, (e) =>
-      e.name.endsWith(onlyCurrentView ? ".csv" : "_all.csv")
+      e.name.endsWith(onlyCurrentView ? ".csv" : "_all.csv"),
     )
 
   /**
