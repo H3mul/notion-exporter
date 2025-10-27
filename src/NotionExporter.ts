@@ -162,15 +162,19 @@ export class NotionExporter {
   getFileZip = (idOrUrl: string): Promise<AdmZip> =>
     this.getZipUrl(idOrUrl).then(this.downloadZip)
 
+  getSpaceZip = (spaceId: string): Promise<AdmZip> =>
+    this.getExportSpaceTaskId(spaceId).then(this.downloadZip)
 
   /**
-   * Downloads and the ZIP archive containing the exported content of a Notion space.
+   * Downloads and extracts the ZIP archive containing the exported content of a Notion space.
    * 
    * @param spaceId - The unique identifier of the Notion space to export
    * @returns A Promise that resolves to an AdmZip instance containing the exported space data
    */
-  getSpaceZip = (spaceId: string): Promise<AdmZip> =>
-    this.getExportSpaceTaskId(spaceId).then(this.downloadZip)
+  getSpaceFiles = async (spaceId: string, path: string): Promise<void> => {
+    const zip = await this.getSpaceZip(spaceId)
+    zip.extractAllTo(path)
+  }
 
   /**
    * Downloads and extracts all files in the exported zip to the given folder.
