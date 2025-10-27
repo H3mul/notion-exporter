@@ -58,7 +58,7 @@ export class NotionExporter {
    * @param idOrUrl BlockId or URL of the page/block/DB to export
    * @returns The task's id
    */
-  async getTaskId(idOrUrl: string): Promise<string> {
+  async getExportBlockTaskId(idOrUrl: string): Promise<string> {
     const id = validateUuid(blockIdFromUrl(idOrUrl))
     if (!id) return Promise.reject(`Invalid URL or blockId: ${idOrUrl}`)
 
@@ -77,6 +77,41 @@ export class NotionExporter {
             exportType: "markdown",
             ...config,
           },
+        },
+      },
+    })
+    return res.data.taskId
+  }
+
+  /**
+   * Adds an 'exportSpace' task to the Notion API's queue of tasks.
+   *
+   * @param spaceId The ID of the space to export
+   * @param exportOptions Optional export options to override defaults
+   * @returns The task's id
+   */
+  async getExportSpaceTaskId(spaceId: string): Promise<string> {
+    const id = validateUuid(spaceId)
+    if (!id) return Promise.reject(`Invalid spaceId: ${spaceId}`)
+
+    // extract pollInterval to not put it in request
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { pollInterval, ...config } = this.config
+
+    const res = await this.client.post("enqueueTask", {
+      task: {
+        eventName: "exportSpace",
+        request: {
+          spaceId: id,
+          shouldExportComments: false,
+          exportOptions: {
+            exportType: "markdown",
+            flattenExportFiletree: false,
+            ...config,
+          },
+        },
+        cellRouting: {
+          spaceIds: [],
         },
       },
     })
@@ -112,7 +147,7 @@ export class NotionExporter {
    * @returns The URL of the exported ZIP archive
    */
   getZipUrl = (idOrUrl: string): Promise<string> =>
-    this.getTaskId(idOrUrl).then(this.pollTask)
+    this.getExportBlockTaskId(idOrUrl).then(this.pollTask)
 
   /**
    * Downloads the ZIP at the given URL.
@@ -124,8 +159,18 @@ export class NotionExporter {
     return new AdmZip(res.data)
   }
 
-  getZip = (idOrUrl: string): Promise<AdmZip> =>
+  getFileZip = (idOrUrl: string): Promise<AdmZip> =>
     this.getZipUrl(idOrUrl).then(this.downloadZip)
+
+
+  /**
+   * Downloads and the ZIP archive containing the exported content of a Notion space.
+   * 
+   * @param spaceId - The unique identifier of the Notion space to export
+   * @returns A Promise that resolves to an AdmZip instance containing the exported space data
+   */
+  getSpaceZip = (spaceId: string): Promise<AdmZip> =>
+    this.getExportSpaceTaskId(spaceId).then(this.downloadZip)
 
   /**
    * Downloads and extracts all files in the exported zip to the given folder.
@@ -134,7 +179,7 @@ export class NotionExporter {
    * @param path Folder path where the files are unzipped
    */
   getMdFiles = async (idOrUrl: string, path: string): Promise<void> => {
-    const zip = await this.getZip(idOrUrl)
+    const zip = await this.getFileZip(idOrUrl)
     zip.extractAllTo(path)
   }
 
@@ -150,7 +195,7 @@ export class NotionExporter {
     idOrUrl: string,
     predicate: (entry: AdmZip.IZipEntry) => boolean,
   ): Promise<string> {
-    const zip = await this.getZip(idOrUrl)
+    const zip = await this.getFileZip(idOrUrl)
     const entry = zip.getEntries().find(predicate)
     return (
       entry?.getData().toString().trim() ||
